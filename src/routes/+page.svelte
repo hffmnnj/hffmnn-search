@@ -17,7 +17,7 @@
 	<meta name="description" content="A private, editorial search experience." />
 </svelte:head>
 
-<div class="flex min-h-[70vh] flex-col items-center justify-center">
+<div class="flex h-[calc(100vh-80px)] flex-col items-center justify-center overflow-hidden">
 	<div class="mb-12 text-center">
 		<h1 class="font-heading text-5xl tracking-wide text-[var(--text)] md:text-7xl">
 			hffmnn search

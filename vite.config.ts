@@ -5,10 +5,12 @@ export default defineConfig({
 	plugins: [sveltekit()],
 	server: {
 		port: 6767,
-		host: '0.0.0.0'
+		host: '0.0.0.0',
+		allowedHosts: ['laptop', 'localhost', '127.0.0.1']
 	},
 	preview: {
 		port: 6767,
-		host: '0.0.0.0'
+		host: '0.0.0.0',
+		allowedHosts: ['laptop', 'localhost', '127.0.0.1']
 	}
 });

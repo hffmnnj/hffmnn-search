@@ -16,6 +16,8 @@
   let webResults = $state<any[]>([]);
   let newsResults = $state<any[]>([]);
   let videoResults = $state<any[]>([]);
+  let hasMore = $state(false);
+  let currentPage = $state(1);
 
   const tabs: { id: typeof activeTab; label: string }[] = [
     { id: 'web', label: 'Web' },
@@ -68,11 +70,7 @@
     for (const r of results) {
       const domain = extractDomain(r.meta?.url || r.url || '');
       if (!groups[domain]) {
-        groups[domain] = {
-          domain,
-          favicon: r.profile?.img || '',
-          results: []
-        };
+        groups[domain] = { domain, favicon: r.profile?.img || '', results: [] };
       }
       groups[domain].results.push(r);
     }
@@ -83,7 +81,7 @@
     if (!query.trim()) return;
     isLoading = true;
     error = '';
-    spellSuggestion = '';
+    if (offset === 0) spellSuggestion = '';
     if (offset === 0) aiOverview = '';
 
     const params = new URLSearchParams({ q: query.trim() });
@@ -103,21 +101,48 @@
       const data = await res.json();
 
       if (activeTab === 'web') {
-        webResults = data.web || [];
-        newsResults = data.news || [];
-        videoResults = data.videos || [];
-        feed = data.feed || [];
-        if (offset === 0 && data.altered && data.altered !== query.trim()) {
-          spellSuggestion = data.altered;
-        }
-        // Load AI Overview on first page only
+        const newWeb = data.web || [];
+        const newNews = data.news || [];
+        const newVideos = data.videos || [];
+        const newFeed = data.feed || [];
+
         if (offset === 0) {
-          loadOverview(query, data.web?.slice(0, 5) || []);
+          webResults = newWeb;
+          newsResults = newNews;
+          videoResults = newVideos;
+          feed = newFeed;
+          currentPage = 1;
+          if (data.altered && data.altered !== query.trim()) {
+            spellSuggestion = data.altered;
+          }
+          loadOverview(query, newWeb.slice(0, 5));
+        } else {
+          // Append new results, dedupe by URL
+          const seen = new Set(webResults.map(r => r.url));
+          webResults = [...webResults, ...newWeb.filter((r: any) => !seen.has(r.url))];
+          newsResults = [...newsResults, ...newNews.filter((r: any) => !seen.has(r.url))];
+          videoResults = [...videoResults, ...newVideos.filter((r: any) => !seen.has(r.url))];
+          feed = [...feed, ...newFeed.filter((r: any) => !seen.has(r.data?.url))];
+          currentPage += 1;
         }
+        total = data.total || 0;
+        hasMore = newWeb.length > 0;
       } else {
-        feed = (data.results || []).map((r: any) => ({ type: activeTab === 'news' ? 'news' : activeTab === 'videos' ? 'video' : 'image', data: r }));
+        const newResults = (data.results || []).map((r: any) => ({
+          type: activeTab === 'news' ? 'news' : activeTab === 'videos' ? 'video' : 'image',
+          data: r
+        }));
+        if (offset === 0) {
+          feed = newResults;
+          currentPage = 1;
+        } else {
+          const seen = new Set(feed.map(f => f.data?.url));
+          feed = [...feed, ...newResults.filter((r: any) => !seen.has(r.data?.url))];
+          currentPage += 1;
+        }
+        total = data.total || 0;
+        hasMore = newResults.length > 0;
       }
-      total = data.total || 0;
     } catch (e: any) {
       error = e.message || 'Search failed';
     } finally {
@@ -157,7 +182,23 @@
     activeTab = tab;
     offset = 0;
     feed = [];
+    webResults = [];
+    newsResults = [];
+    videoResults = [];
     aiOverview = '';
+    spellSuggestion = '';
+    error = '';
+    currentPage = 1;
+    search();
+  }
+
+  function loadMore() {
+    offset += 20;
+    search();
+  }
+
+  function goToPage(pageNum: number) {
+    offset = (pageNum - 1) * 20;
     search();
   }
 
@@ -251,7 +292,7 @@
     </div>
 
   <!-- Results -->
-  {:else if feed.length > 0 || activeTab !== 'web'}
+  {:else if (activeTab === 'web' && webResults.length > 0) || (activeTab !== 'web' && feed.length > 0)}
     <div class="space-y-2">
       <!-- AI Overview (web only, first page) -->
       {#if activeTab === 'web' && offset === 0}
@@ -294,15 +335,9 @@
               <div class="divide-y divide-[var(--border)]">
                 {#each group.results as result}
                   <a href={result.url} target="_blank" rel="noopener" class="block px-3.5 py-2.5 hover:bg-[var(--surface-hover)] transition-colors">
-                    <h3 class="font-heading text-sm leading-snug text-[var(--text)]">
-                      {decodeHtml(result.title)}
-                    </h3>
-                    <p class="mt-0.5 text-[11px] text-[var(--text-tertiary)]">
-                      {formatAge(result.page_age)}
-                    </p>
-                    <p class="mt-1 text-xs leading-relaxed text-[var(--text-secondary)] line-clamp-2">
-                      {decodeHtml(result.description)}
-                    </p>
+                    <h3 class="font-heading text-sm leading-snug text-[var(--text)]">{decodeHtml(result.title)}</h3>
+                    <p class="mt-0.5 text-[11px] text-[var(--text-tertiary)]">{formatAge(result.page_age)}</p>
+                    <p class="mt-1 text-xs leading-relaxed text-[var(--text-secondary)] line-clamp-2">{decodeHtml(result.description)}</p>
                   </a>
                 {/each}
               </div>
@@ -317,9 +352,7 @@
                     <img src={result.profile.img} alt="" class="mt-0.5 h-4 w-4 rounded-full shrink-0" loading="lazy" />
                   {/if}
                   <div class="min-w-0">
-                    <h3 class="font-heading text-sm leading-snug text-[var(--text)]">
-                      {decodeHtml(result.title)}
-                    </h3>
+                    <h3 class="font-heading text-sm leading-snug text-[var(--text)]">{decodeHtml(result.title)}</h3>
                     <p class="mt-0.5 flex items-center gap-1.5 text-[11px] text-[var(--text-tertiary)]">
                       <span class="text-[var(--text-secondary)]">{domain}</span>
                       {#if result.page_age}
@@ -327,9 +360,7 @@
                         <span>{formatAge(result.page_age)}</span>
                       {/if}
                     </p>
-                    <p class="mt-1.5 text-xs leading-relaxed text-[var(--text-secondary)] line-clamp-2">
-                      {decodeHtml(result.description)}
-                    </p>
+                    <p class="mt-1.5 text-xs leading-relaxed text-[var(--text-secondary)] line-clamp-2">{decodeHtml(result.description)}</p>
                   </div>
                 </div>
               </a>
@@ -344,7 +375,7 @@
               <span class="text-xs font-medium text-[var(--text-secondary)]">News</span>
             </div>
             <div class="divide-y divide-[var(--border)]">
-              {#each newsResults.slice(0, 3) as result}
+              {#each newsResults.slice(0, 4) as result}
                 <a href={result.url} target="_blank" rel="noopener" class="block px-3.5 py-2.5 hover:bg-[var(--surface-hover)] transition-colors">
                   <h3 class="font-heading text-sm leading-snug text-[var(--text)]">{decodeHtml(result.title)}</h3>
                   <p class="mt-0.5 text-[11px] text-[var(--text-tertiary)]">{extractDomain(result.url)} • {result.meta?.age || ''}</p>
@@ -430,17 +461,42 @@
       {/if}
 
       <!-- Pagination -->
-      {#if total > offset + (activeTab === 'web' ? webResults.length : feed.length)}
-        <div class="pt-4 flex justify-center">
-          <button
-            onclick={() => { offset += 20; search(); }}
-            class="rounded-full border border-[var(--border)] bg-[var(--surface)] px-5 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-all"
-          >
-            {#if isLoading && offset > 0}
-              <span class="inline-block h-3 w-3 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)] mr-2"></span>
+      {#if hasMore || (activeTab === 'web' && webResults.length > 0) || (activeTab !== 'web' && feed.length > 0)}
+        <div class="pt-4 flex flex-col items-center gap-3">
+          {#if isLoading && offset > 0}
+            <div class="flex items-center gap-2 text-sm text-[var(--text-secondary)]">
+              <div class="h-4 w-4 animate-spin rounded-full border-2 border-[var(--border)] border-t-[var(--accent)]"></div>
+              Loading more...
+            </div>
+          {/if}
+
+          <div class="flex items-center gap-2">
+            {#if currentPage > 1}
+              <button
+                onclick={() => { offset = Math.max(0, offset - 20); goToPage(currentPage - 1); }}
+                class="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-all"
+              >
+                Previous
+              </button>
             {/if}
-            More results
-          </button>
+
+            <span class="text-xs text-[var(--text-tertiary)] px-2">
+              Page {currentPage}
+              {#if total > 0}
+                <span class="mx-1">•</span>
+                {total.toLocaleString()} results
+              {/if}
+            </span>
+
+            {#if hasMore}
+              <button
+                onclick={loadMore}
+                class="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-all"
+              >
+                Next
+              </button>
+            {/if}
+          </div>
         </div>
       {/if}
     </div>
