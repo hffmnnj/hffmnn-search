@@ -13,18 +13,14 @@
 </script>
 
 <svelte:head>
-	<title>hffmnn search</title>
-	<meta name="description" content="A private, editorial search experience." />
+	<title>hffmnn</title>
 </svelte:head>
 
-<div class="flex h-[calc(100vh-80px)] flex-col items-center justify-center overflow-hidden">
+<div class="flex flex-1 flex-col items-center justify-center overflow-hidden">
 	<div class="mb-12 text-center">
 		<h1 class="font-heading text-5xl tracking-wide text-[var(--text)] md:text-7xl">
-			hffmnn search
+			hffmnn
 		</h1>
-		<p class="mt-4 font-body text-lg italic text-[var(--text-secondary)]">
-			Search the web. Reclaim your privacy.
-		</p>
 	</div>
 
 	<form onsubmit={handleSubmit} class="w-full max-w-2xl">
@@ -67,19 +63,4 @@
 			{/if}
 		</div>
 	</form>
-
-	<div class="mt-8 flex gap-6 text-sm text-[var(--text-secondary)]">
-		<span class="flex items-center gap-2">
-			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-			Private
-		</span>
-		<span class="flex items-center gap-2">
-			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3v18"/><path d="m7 8 5-5 5 5"/><path d="m7 16 5 5 5-5"/></svg>
-			Ad-free
-		</span>
-		<span class="flex items-center gap-2">
-			<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
-			AI-powered
-		</span>
-	</div>
 </div>

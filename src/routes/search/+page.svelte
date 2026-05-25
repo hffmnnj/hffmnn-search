@@ -211,10 +211,11 @@
 </script>
 
 <svelte:head>
-  <title>{query ? `${query} — ` : ''}hffmnn search</title>
+  <title>{query ? `${query} — hffmnn` : 'hffmnn'}</title>
 </svelte:head>
 
-<div class="mx-auto max-w-5xl">
+<div class="py-8">
+  <div class="mx-auto max-w-5xl">
   <!-- Search bar -->
   <form onsubmit={handleSubmit} class="mb-5">
     <div class="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 shadow-sm transition-shadow focus-within:shadow-md focus-within:border-[var(--accent)]">
@@ -507,4 +508,5 @@
       <p class="mt-1 text-xs text-[var(--text-tertiary)]">Try a different query or check your spelling.</p>
     </div>
   {/if}
+</div>
 </div>

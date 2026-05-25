@@ -22,10 +22,11 @@
 </script>
 
 <svelte:head>
-  <title>Settings — hffmnn search</title>
+  <title>Settings — hffmnn</title>
 </svelte:head>
 
-<div class="mx-auto max-w-2xl">
+<div class="py-8">
+  <div class="mx-auto max-w-2xl">
   <h1 class="mb-8 font-heading text-4xl">Settings</h1>
 
   <div class="space-y-8">
@@ -72,5 +73,6 @@
     >
       {saved ? 'Saved!' : 'Save Settings'}
     </button>
+  </div>
   </div>
 </div>
