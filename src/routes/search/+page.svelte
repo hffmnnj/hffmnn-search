@@ -84,7 +84,7 @@
     if (offset === 0) spellSuggestion = '';
     if (offset === 0) aiOverview = '';
 
-    const params = new URLSearchParams({ q: query.trim() });
+    const params = new URLSearchParams({ q: query.trim(), count: '20' });
     if (freshness && activeTab !== 'images') params.set('freshness', freshness);
     if (activeTab === 'videos' && freshness) params.set('freshness', freshness);
     if (offset > 0) params.set('offset', String(offset));
@@ -126,7 +126,7 @@
           currentPage += 1;
         }
         total = data.total || 0;
-        hasMore = newWeb.length > 0;
+        hasMore = offset < 9 && newWeb.length > 0;
       } else {
         const newResults = (data.results || []).map((r: any) => ({
           type: activeTab === 'news' ? 'news' : activeTab === 'videos' ? 'video' : 'image',
@@ -141,7 +141,7 @@
           currentPage += 1;
         }
         total = data.total || 0;
-        hasMore = newResults.length > 0;
+        hasMore = offset < 9 && newResults.length > 0;
       }
     } catch (e: any) {
       error = e.message || 'Search failed';
@@ -193,12 +193,12 @@
   }
 
   function loadMore() {
-    offset += 20;
+    offset += 1;
     search();
   }
 
   function goToPage(pageNum: number) {
-    offset = (pageNum - 1) * 20;
+    offset = pageNum - 1;
     search();
   }
 
@@ -474,7 +474,7 @@
           <div class="flex items-center gap-2">
             {#if currentPage > 1}
               <button
-                onclick={() => { offset = Math.max(0, offset - 20); goToPage(currentPage - 1); }}
+                onclick={() => goToPage(currentPage - 1)}
                 class="rounded-full border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] hover:text-[var(--text)] hover:border-[var(--border-strong)] transition-all"
               >
                 Previous

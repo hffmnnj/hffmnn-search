@@ -40,7 +40,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto w-full max-w-6xl flex-1 px-6">
+	<main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6">
 		<slot />
 	</main>
 </div>

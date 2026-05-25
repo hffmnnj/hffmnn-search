@@ -61,11 +61,16 @@ function getDb() {
 }
 
 export function logSearch(query: string, resultCount: number, type: string = 'web') {
-  const stmt = getDb().prepare(`
-    INSERT INTO searches (query, result_count, search_type)
-    VALUES (?, ?, ?)
-  `);
-  return stmt.run(query, resultCount, type);
+  try {
+    const stmt = getDb().prepare(`
+      INSERT INTO searches (query, result_count, search_type)
+      VALUES (?, ?, ?)
+    `);
+    return stmt.run(query, resultCount, type);
+  } catch (e) {
+    // Ignore duplicate timestamp collisions (old schema with UNIQUE constraint)
+    return null;
+  }
 }
 
 export function getSearchHistory(limit: number = 50) {
