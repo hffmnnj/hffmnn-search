@@ -147,6 +147,9 @@
       error = e.message || 'Search failed';
     } finally {
       isLoading = false;
+      if (browser && typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
     }
   }
 
@@ -202,9 +205,10 @@
     search();
   }
 
-  $effect(() => {
+  import { onMount } from 'svelte';
+
+  onMount(() => {
     if (browser && query) {
-      offset = 0;
       search();
     }
   });

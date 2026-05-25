@@ -15,7 +15,7 @@
 	}
 </script>
 
-<div class="flex min-h-screen flex-col transition-colors duration-300">
+<div class="flex min-h-dvh flex-col transition-colors duration-300">
 	<header class="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-md">
 		<div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
 			<a href="/" class="font-heading text-2xl tracking-wide text-[var(--text)] hover:text-[var(--accent)] transition-colors">
@@ -40,7 +40,7 @@
 		</div>
 	</header>
 
-	<main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6">
+	<main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 min-h-0">
 		<slot />
 	</main>
 </div>
