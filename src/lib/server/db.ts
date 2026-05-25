@@ -19,8 +19,7 @@ function getDb() {
         timestamp INTEGER DEFAULT (unixepoch()),
         result_count INTEGER DEFAULT 0,
         has_summary BOOLEAN DEFAULT 0,
-        search_type TEXT DEFAULT 'web' CHECK(search_type IN ('web', 'news', 'images')),
-        UNIQUE(query, timestamp)
+        search_type TEXT DEFAULT 'web' CHECK(search_type IN ('web', 'news', 'images'))
       );
 
       CREATE INDEX IF NOT EXISTS idx_searches_timestamp ON searches(timestamp DESC);
