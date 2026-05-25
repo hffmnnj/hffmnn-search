@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@font-face {
+	font-family: 'TAN Mon Cheri';
+	src: url('/fonts/TAN-Mon-Cheri.woff2') format('woff2');
+	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
+@layer base {
+	:root {
+		--font-heading: 'TAN Mon Cheri', serif;
+		--font-body: 'Instrument Serif', Georgia, serif;
+		--bg: #FAF8F5;
+		--surface: #FFFFFF;
+		--surface-hover: #F5F3F0;
+		--text: #1A1A1A;
+		--text-secondary: #6B6560;
+		--text-tertiary: #A39E99;
+		--accent: #8B4513;
+		--accent-hover: #6B3410;
+		--border: #E8E4DF;
+		--border-strong: #D4CFC8;
+		--highlight: #FFF8E7;
+		--success: #2D6A4F;
+		--error: #9B2C2C;
+	}
+
+	.dark {
+		--bg: #12100E;
+		--surface: #1A1714;
+		--surface-hover: #25211D;
+		--text: #F0EAE3;
+		--text-secondary: #9A938A;
+		--text-tertiary: #6B6560;
+		--accent: #D4A574;
+		--accent-hover: #E8C9A0;
+		--border: #2A2520;
+		--border-strong: #3D3630;
+		--highlight: #2A2018;
+	}
+
+	body {
+		font-family: var(--font-body);
+		background-color: var(--bg);
+		color: var(--text);
+	}
+
+	::selection {
+		background-color: var(--accent);
+		color: var(--bg);
+	}
+}
