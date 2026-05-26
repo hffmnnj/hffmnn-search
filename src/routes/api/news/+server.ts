@@ -11,8 +11,11 @@ export const GET: RequestHandler = async ({ url }) => {
   const offset = url.searchParams.get('offset') || '0';
   const freshness = url.searchParams.get('freshness') || '';
 
+  // Brave API max offset is 9
+  const braveOffset = Math.min(parseInt(offset), 9);
+
   try {
-    const data = await newsSearch({ q, count, offset, freshness });
+    const data = await newsSearch({ q, count, offset: String(braveOffset), freshness });
     const results = data.results || [];
 
     logSearch(q, results.length, 'news');

@@ -4,7 +4,7 @@ export default {
 	theme: {
 		extend: {
 		fontFamily: {
-			heading: ['"TAN Mon Cheri"', 'serif'],
+			heading: ['"Recoleta"', 'serif'],
 			body: ['"Instrument Serif"', 'Georgia', 'serif'],
 		},
 		colors: {

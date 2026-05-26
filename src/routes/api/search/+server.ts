@@ -14,8 +14,11 @@ export const GET: RequestHandler = async ({ url }) => {
   const country = url.searchParams.get('country') || '';
   const lang = url.searchParams.get('lang') || '';
 
+  // Brave API max offset is 9 — cap it
+  const braveOffset = Math.min(parseInt(offset), 9);
+
   try {
-    const data = await webSearch({ q, count, offset, freshness, safesearch, country, lang });
+    const data = await webSearch({ q, count, offset: String(braveOffset), freshness, safesearch, country, lang });
     const webResults = data.web?.results || [];
     const newsResults = data.news?.results || [];
     const videoResults = data.videos?.results || [];
@@ -58,7 +61,7 @@ export const GET: RequestHandler = async ({ url }) => {
           feed.push({ type: 'video', data: vr });
         }
       } else if (item.type === 'images' && item.all) {
-        // Skip inline images for now, could add gallery
+        // Skip inline images for now
       }
     }
 
@@ -67,6 +70,46 @@ export const GET: RequestHandler = async ({ url }) => {
       for (const r of filtered) {
         feed.push({ type: 'web', data: r });
       }
+    }
+
+    // ─── Infobox Detection (fast paths only) ─────────────────────────────────
+    let infobox = null;
+    let infoboxType: string | null = null;
+    const qLower = q.toLowerCase();
+
+    // Definition query — use best web result description
+    const defMatch = q.match(/^(?:define|what is|meaning of|definition of)\s+(.+)/i);
+    if (defMatch && filtered.length > 0) {
+      const term = defMatch[1].trim();
+      const dictResult = filtered.find((r: any) => {
+        const domain = extractDomain(r.url || '');
+        return /merriam|dictionary|oxford|cambridge|vocabulary|thefreedictionary|collins/.test(domain);
+      }) || filtered[0];
+      infobox = {
+        type: 'definition',
+        term,
+        content: dictResult.description || '',
+        source: dictResult.url || '',
+      };
+    }
+
+    // Places query — don't block, mark as pending
+    const placeSignals = ['near me', 'nearby', 'closest', 'nearest', 'location', 'hours', 'address', 'phone'];
+    const isPlaceQuery =
+      placeSignals.some((s) => qLower.includes(s)) ||
+      (q.split(' ').length <= 3 && !q.match(/\b(what|how|why|when|who|define|meaning|is|are)\b/i));
+    if (isPlaceQuery && !infobox) {
+      infoboxType = 'places';
+    }
+
+    // Knowledge card — use top result for any query that doesn't have an infobox yet
+    if (!infobox && filtered.length > 0 && !isPlaceQuery) {
+      infobox = {
+        type: 'knowledge',
+        title: q,
+        content: filtered[0].description || '',
+        source: filtered[0].url || '',
+      };
     }
 
     // Log search
@@ -79,7 +122,9 @@ export const GET: RequestHandler = async ({ url }) => {
       news: newsResults,
       videos: videoResults.slice(0, 6),
       feed,
-      total: data.web?.total?.results || filtered.length,
+      infobox,
+      infoboxType,
+      total: data.web?.total?.results || 0,
       offset: parseInt(offset),
       count: parseInt(count),
       summaryKey,

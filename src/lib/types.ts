@@ -35,9 +35,17 @@ export interface NewsResponse {
 export interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
+  searched?: boolean;
 }
 
 export interface DomainPreference {
   domain: string;
   preference: 'pin' | 'block' | 'normal';
+}
+
+export interface AIModel {
+  id: string;
+  name: string;
+  description?: string;
+  context_length?: number;
 }

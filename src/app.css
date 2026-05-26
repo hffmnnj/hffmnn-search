@@ -3,16 +3,32 @@
 @tailwind utilities;
 
 @font-face {
-	font-family: 'TAN Mon Cheri';
-	src: url('/fonts/TAN-Mon-Cheri.woff2') format('woff2');
+	font-family: 'Recoleta';
+	src: url('/fonts/Recoleta-Regular.ttf') format('truetype');
 	font-weight: normal;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Recoleta';
+	src: url('/fonts/Recoleta-Medium.ttf') format('truetype');
+	font-weight: 500;
+	font-style: normal;
+	font-display: swap;
+}
+
+@font-face {
+	font-family: 'Recoleta';
+	src: url('/fonts/Recoleta-Bold.ttf') format('truetype');
+	font-weight: 700;
 	font-style: normal;
 	font-display: swap;
 }
 
 @layer base {
 	:root {
-		--font-heading: 'TAN Mon Cheri', serif;
+		--font-heading: 'Recoleta', serif;
 		--font-body: 'Instrument Serif', Georgia, serif;
 		--bg: #FAF8F5;
 		--surface: #FFFFFF;
@@ -47,10 +63,30 @@
 		font-family: var(--font-body);
 		background-color: var(--bg);
 		color: var(--text);
+		overflow-x: hidden;
+	}
+
+	html {
+		overflow-x: hidden;
 	}
 
 	::selection {
 		background-color: var(--accent);
 		color: var(--bg);
+	}
+
+	/* Hide broken default Leaflet marker images */
+	.leaflet-marker-icon[src*="marker-icon"],
+	.leaflet-marker-shadow {
+		display: none !important;
+	}
+
+	/* Custom divIcon markers */
+	.custom-map-marker {
+		background: transparent !important;
+		border: none !important;
+	}
+	.custom-map-marker > div {
+		font-family: var(--font-body), system-ui, sans-serif;
 	}
 }
