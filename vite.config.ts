@@ -6,11 +6,11 @@ export default defineConfig({
 	server: {
 		port: 6767,
 		host: '0.0.0.0',
-		allowedHosts: ['laptop', 'localhost', '127.0.0.1']
+		allowedHosts: ['laptop', 'localhost', '127.0.0.1', 'search.hffmnn.com', '.hffmnn.com']
 	},
 	preview: {
 		port: 6767,
 		host: '0.0.0.0',
-		allowedHosts: ['laptop', 'localhost', '127.0.0.1']
+		allowedHosts: ['laptop', 'localhost', '127.0.0.1', 'search.hffmnn.com', '.hffmnn.com']
 	}
 });
