@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
 	import { browser } from '$app/environment';
-	import { Loader2, Shield, Terminal } from 'lucide-svelte';
+	import { HugeiconsIcon } from '@hugeicons/svelte';
+import { Loading03Icon, Shield01Icon, TerminalIcon } from '@hugeicons/core-free-icons';
 
 	let code = $state('');
 	let loading = $state(true);
@@ -64,7 +65,7 @@
 	<div class="w-full max-w-md flex flex-col gap-6">
 		<div class="text-center">
 			<div class="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center" style="background: var(--highlight);">
-				<Shield size={24} style="color: var(--accent);" />
+				<HugeiconsIcon icon={Shield01Icon} size={24} style="color: var(--accent);" />
 			</div>
 			<h1 class="text-2xl font-semibold mb-1" style="font-family: var(--font-heading); color: var(--text);">
 				Authenticate Device
@@ -76,7 +77,7 @@
 
 		{#if loading}
 			<div class="flex items-center justify-center gap-2 py-8">
-				<Loader2 size={18} class="animate-spin" style="color: var(--text-tertiary);" />
+				<HugeiconsIcon icon={Loading03Icon} size={18} class="animate-spin" style="color: var(--text-tertiary);" />
 				<span class="text-sm" style="color: var(--text-tertiary);">Generating pairing code...</span>
 			</div>
 		{:else if paired}
@@ -99,7 +100,7 @@
 
 				<div class="flex flex-col gap-2">
 					<p class="text-sm font-medium" style="color: var(--text);">
-						<Terminal size={14} class="inline mr-1" />
+						<HugeiconsIcon icon={TerminalIcon} size={14} class="inline mr-1" />
 						Run this on your machine:
 					</p>
 					<button
