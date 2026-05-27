@@ -1,49 +1,42 @@
-/// <reference types="@sveltejs/kit" />
-import { build, files, version } from '$service-worker';
-
-const CACHE = `cache-${version}`;
-const ASSETS = [...build, ...files];
+const CACHE_NAME = 'hffmnn-search-v1';
+const SHELL_ASSETS = [
+	'/',
+	'/manifest.json',
+	'/favicon.svg',
+	'/favicon-192x192.png',
+	'/favicon-512x512.png',
+	'/apple-touch-icon.png'
+];
 
 self.addEventListener('install', (event) => {
-  async function addFilesToCache() {
-    const cache = await caches.open(CACHE);
-    await cache.addAll(ASSETS);
-  }
-  event.waitUntil(addFilesToCache());
+	event.waitUntil(
+		caches.open(CACHE_NAME).then((cache) => cache.addAll(SHELL_ASSETS))
+	);
+	self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
-  async function deleteOldCaches() {
-    for (const key of await caches.keys()) {
-      if (key !== CACHE) await caches.delete(key);
-    }
-  }
-  event.waitUntil(deleteOldCaches());
+	event.waitUntil(
+		caches.keys().then((keys) =>
+			Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+		)
+	);
+	self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  if (event.request.method !== 'GET') return;
-  if (event.request.url.includes('/api/')) return;
+	if (event.request.method !== 'GET') return;
+	if (event.request.url.startsWith('http') && !event.request.url.includes(self.location.host)) return;
 
-  async function respond() {
-    const url = new URL(event.request.url);
-    const cache = await caches.open(CACHE);
-
-    if (ASSETS.includes(url.pathname)) {
-      const response = await cache.match(event.request);
-      if (response) return response;
-    }
-
-    try {
-      const response = await fetch(event.request);
-      if (response.status === 200) {
-        cache.put(event.request, response.clone());
-      }
-      return response;
-    } catch {
-      return cache.match(event.request);
-    }
-  }
-
-  event.respondWith(respond());
+	event.respondWith(
+		caches.match(event.request).then((cached) => {
+			if (cached) return cached;
+			return fetch(event.request).then((response) => {
+				if (!response || response.status !== 200 || response.type !== 'basic') return response;
+				const clone = response.clone();
+				caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+				return response;
+			});
+		})
+	);
 });
