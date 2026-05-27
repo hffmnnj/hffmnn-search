@@ -1,11 +1,17 @@
 <script lang="ts">
 	import '../app.css';
 	import { onMount } from 'svelte';
+	import { page } from '$app/stores';
 
 	let isDark = $state(false);
+	let onAuthPage = $state(false);
 
 	onMount(() => {
 		isDark = document.documentElement.classList.contains('dark');
+	});
+
+	$effect(() => {
+		onAuthPage = $page.url.pathname.startsWith('/auth');
 	});
 
 	function toggleTheme() {
@@ -16,6 +22,7 @@
 </script>
 
 <div class="flex min-h-dvh flex-col transition-colors duration-300">
+	{#if !onAuthPage}
 	<header class="sticky top-0 z-50 border-b border-[var(--border)] bg-[var(--bg)]/80 backdrop-blur-md">
 		<div class="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
 			<a href="/" class="font-heading text-2xl tracking-wide text-[var(--text)] hover:text-[var(--accent)] transition-colors">
@@ -56,6 +63,7 @@
 			</div>
 		</div>
 	</header>
+	{/if}
 
 	<main class="mx-auto flex w-full max-w-6xl flex-1 flex-col px-6 min-h-0">
 		<slot />
