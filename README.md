@@ -2,7 +2,9 @@
 
 > A private, editorial search experience. Built for people who miss when search felt like reading a newspaper instead of scrolling through ads.
 
-**hffmnn search** is a self-hosted search frontend that combines Brave Search results with AI-powered overviews, local news aggregation, and an editorial "front page" feel. No tracking. No ads. Your queries stay yours.
+**hffmnn search** is a self-hosted search frontend that combines web search with AI-powered overviews, local news aggregation, and an editorial "front page" feel. No tracking. No ads. Your queries stay yours.
+
+Supports **any OpenAI/Anthropic-compatible LLM endpoint** — OpenAI, Anthropic, OpenRouter, Ollama, local vLLM, or anything that speaks the standard chat completions protocol.
 
 ---
 
@@ -10,7 +12,7 @@
 
 | Feature | Description |
 |---------|-------------|
-| **AI Search** | Brave Search backend with AI-generated overviews via Ollama |
+| **AI Search** | AI-generated overviews via your choice of LLM provider |
 | **Editorial News** | Daily curated news from Kagi News API, vectorized for search |
 | **Bang Shortcuts** | `!w` Wikipedia, `!gh` GitHub, `!yt` YouTube, `!maps` — extensible |
 | **Local First** | SQLite database, runs entirely on your own hardware |
@@ -49,9 +51,13 @@ bun install
 
 ```bash
 cp .env.example .env
-# Edit .env with your keys:
-#   BRAVE_API_KEY=...    # https://api.search.brave.com
-#   OLLAMA_API_KEY=...   # https://ollama.com
+# Edit .env with your keys and provider choices:
+#   BRAVE_API_KEY=***     # https://api.search.brave.com
+#   EXA_API_KEY=***       # https://exa.ai (if using Exa)
+#   LLM_BASE_URL=***      # https://api.openai.com/v1, https://api.anthropic.com/v1, etc.
+#   LLM_API_KEY=***
+#   LLM_MODEL=gpt-4o
+#   OLLAMA_API_KEY=***    # Fallback if LLM_BASE_URL unset
 ```
 
 ### Run
@@ -71,23 +77,54 @@ sudo systemctl enable --now hffmnn-search
 
 ---
 
+## LLM Providers
+
+The app uses a unified LLM client that works with **any OpenAI/Anthropic-compatible endpoint**:
+
+| Provider | `LLM_BASE_URL` | `LLM_MODEL` example |
+|----------|---------------|---------------------|
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-4o` |
+| **Anthropic** | `https://api.anthropic.com/v1` | `claude-sonnet-4-20250514` |
+| **OpenRouter** | `https://openrouter.ai/api/v1` | `anthropic/claude-sonnet-4` |
+| **Ollama Cloud** | unset (uses `OLLAMA_API_KEY`) | `gemma4:31b-cloud` |
+| **Local vLLM** | `http://localhost:8000/v1` | `llama3.1-70b` |
+
+Set `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL` for custom endpoints. If `LLM_BASE_URL` is unset, the app falls back to **Ollama Cloud** using `OLLAMA_API_KEY`.
+
+---
+
+## Search Providers
+
+Choose your web search backend via `SEARCH_PROVIDER`:
+
+| Provider | Env | Notes |
+|----------|-----|-------|
+| **Brave** (default) | `SEARCH_PROVIDER=brave` | Traditional web search + news + videos |
+| **Exa** | `SEARCH_PROVIDER=exa` | Neural AI search with autoprompt |
+
+Override per-query with `?provider=exa` or the legacy `?exa=1`.
+
+---
+
 ## Architecture
 
 ```
 src/
 ├── routes/
-│   ├── search/+page.svelte     # Main search results
-│   ├── chat/+page.svelte       # Standalone AI chat
-│   ├── settings/+page.svelte   # API key & prefs
-│   └── auth/pair/              # Device pairing
+│   ├── search/+page.svelte       # Main search results
+│   ├── chat/+page.svelte         # Standalone AI chat
+│   ├── settings/+page.svelte     # API key & prefs
+│   └── auth/pair/                # Device pairing
 ├── lib/
 │   ├── server/
-│   │   ├── auth.ts             # Session/pairing logic
-│   │   ├── db.ts               # SQLite (better-sqlite3)
-│   │   └── search.ts           # Brave + Ollama integration
+│   │   ├── auth.ts               # Session/pairing logic
+│   │   ├── db.ts                 # SQLite (better-sqlite3)
+│   │   ├── brave.ts              # Brave Search client
+│   │   ├── exa.ts                # Exa Neural Search client
+│   │   └── llm.ts                # Unified LLM client
 │   ├── components/
-│   │   └── AIChat.svelte       # Shared chat component
-│   └── bangs.ts                # !bang shortcut engine
+│   │   └── AIChat.svelte         # Shared chat component
+│   └── bangs.ts                  # !bang shortcut engine
 ```
 
 ---
@@ -96,8 +133,13 @@ src/
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `BRAVE_API_KEY` | Yes | Brave Search API key |
-| `OLLAMA_API_KEY` | Yes | Ollama Cloud API key |
+| `SEARCH_PROVIDER` | No | `brave` (default) or `exa` |
+| `BRAVE_API_KEY` | If provider=brave | Brave Search API key |
+| `EXA_API_KEY` | If provider=exa | Exa Neural Search API key |
+| `LLM_BASE_URL` | No | Custom LLM endpoint (OpenAI/Anthropic-compatible) |
+| `LLM_API_KEY` | No | API key for custom LLM endpoint |
+| `LLM_MODEL` | No | Default model slug |
+| `OLLAMA_API_KEY` | No | Ollama Cloud (fallback if `LLM_BASE_URL` unset) |
 | `PORT` | No | Override default `6767` |
 
 ---

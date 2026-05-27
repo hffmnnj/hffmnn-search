@@ -4,6 +4,8 @@ import { exaConfigured, exaWebSearch, normalizeExaResults } from '$lib/server/ex
 import { logSearch, getDomainPrefs } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 
+const SEARCH_PROVIDER = (process.env.SEARCH_PROVIDER || 'brave').toLowerCase();
+
 export const GET: RequestHandler = async ({ url }) => {
   const q = url.searchParams.get('q');
   if (!q) throw error(400, 'Missing query parameter');
@@ -14,7 +16,11 @@ export const GET: RequestHandler = async ({ url }) => {
   const safesearch = url.searchParams.get('safesearch') || 'moderate';
   const country = url.searchParams.get('country') || '';
   const lang = url.searchParams.get('lang') || '';
-  const useExa = url.searchParams.get('exa') === '1' || url.searchParams.get('exa') === 'true';
+
+  // Per-query provider override: ?provider=exa or legacy ?exa=1
+  const providerParam = url.searchParams.get('provider') || '';
+  const useExa = providerParam === 'exa' || url.searchParams.get('exa') === '1' || url.searchParams.get('exa') === 'true';
+  const provider = useExa ? 'exa' : SEARCH_PROVIDER;
 
   // Brave API max offset is 9 — cap it
   const braveOffset = Math.min(parseInt(offset), 9);
@@ -27,47 +33,23 @@ export const GET: RequestHandler = async ({ url }) => {
     let summaryKey = '';
     let altered = '';
     let total = 0;
-    let searchBackend = 'brave';
 
-    // Primary: Brave Search
-    if (!useExa) {
-      try {
-        data = await webSearch({ q, count, offset: String(braveOffset), freshness, safesearch, country, lang });
-        webResults = data.web?.results || [];
-        newsResults = data.news?.results || [];
-        videoResults = data.videos?.results || [];
-        summaryKey = data.query?.summary_key || '';
-        altered = data.query?.altered || '';
-        total = data.web?.total?.results || 0;
-      } catch (braveErr: any) {
-        console.error('Brave search failed:', braveErr);
-        // Fallback to Exa if configured
-        if (exaConfigured()) {
-          console.log('Falling back to Exa search...');
-          const exaData = await exaWebSearch({ q, count: parseInt(count) || 10 });
-          webResults = normalizeExaResults(exaData);
-          searchBackend = 'exa';
-          total = webResults.length;
-        } else {
-          throw braveErr;
-        }
+    if (provider === 'exa') {
+      if (!exaConfigured()) {
+        throw error(500, 'Exa search requested but EXA_API_KEY is not configured');
       }
-    }
-
-    // Secondary / forced: Exa
-    if (useExa && exaConfigured()) {
       const exaData = await exaWebSearch({ q, count: parseInt(count) || 10 });
       webResults = normalizeExaResults(exaData);
-      searchBackend = 'exa';
       total = webResults.length;
-    }
-
-    // If still no results, try Exa as last resort
-    if (webResults.length === 0 && exaConfigured()) {
-      const exaData = await exaWebSearch({ q, count: parseInt(count) || 10 });
-      webResults = normalizeExaResults(exaData);
-      searchBackend = 'exa';
-      total = webResults.length;
+    } else {
+      // Brave Search (default)
+      data = await webSearch({ q, count, offset: String(braveOffset), freshness, safesearch, country, lang });
+      webResults = data.web?.results || [];
+      newsResults = data.news?.results || [];
+      videoResults = data.videos?.results || [];
+      summaryKey = data.query?.summary_key || '';
+      altered = data.query?.altered || '';
+      total = data.web?.total?.results || 0;
     }
 
     // Get domain preferences
@@ -175,7 +157,7 @@ export const GET: RequestHandler = async ({ url }) => {
       count: parseInt(count),
       summaryKey,
       relatedQueries: data?.query?.related || [],
-      searchBackend,
+      searchBackend: provider,
     });
   } catch (e: any) {
     console.error('Search error:', e);
