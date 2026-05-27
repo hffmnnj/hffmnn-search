@@ -1,22 +1,20 @@
 import { randomBytes } from 'crypto';
+import Database from 'better-sqlite3';
 import { join } from 'path';
 import { homedir } from 'os';
 
 const DATA_DIR = join(homedir(), '.local', 'share', 'hffmnn-search');
 
-// Lazy-load bun:sqlite at runtime
-let db: any = null;
-function getDb() {
+let db: Database | null = null;
+function getDb(): Database {
   if (!db) {
-    // @ts-ignore — runtime-only import for Bun
-    const { Database } = require('bun:sqlite');
     db = new Database(join(DATA_DIR, 'search.db'));
     initAuthSchema(db);
   }
   return db;
 }
 
-function initAuthSchema(db: any) {
+function initAuthSchema(db: Database) {
   db.exec(`
     CREATE TABLE IF NOT EXISTS pairing_codes (
       code TEXT PRIMARY KEY,
@@ -59,7 +57,7 @@ export function validatePairingCode(code: string, ip: string, userAgent: string)
   const db = getDb();
   const row = db.prepare(
     "SELECT * FROM pairing_codes WHERE code = ? AND used = 0 AND expires_at > unixepoch()"
-  ).get(code);
+  ).get(code) as any;
 
   if (!row) {
     return { valid: false, error: 'Invalid or expired pairing code' };
@@ -85,7 +83,7 @@ export function validateSession(token: string): { valid: boolean; session?: any 
   const db = getDb();
   const row = db.prepare(
     "SELECT * FROM sessions WHERE token = ? AND expires_at > unixepoch()"
-  ).get(token);
+  ).get(token) as any;
 
   if (!row) return { valid: false };
   return { valid: true, session: row };
@@ -117,6 +115,6 @@ export function isTrustedIp(ip: string): boolean {
 
 export function isCodeUsed(code: string): boolean {
   const db = getDb();
-  const row = db.prepare("SELECT used FROM pairing_codes WHERE code = ?").get(code);
+  const row = db.prepare("SELECT used FROM pairing_codes WHERE code = ?").get(code) as any;
   return row?.used === 1;
 }

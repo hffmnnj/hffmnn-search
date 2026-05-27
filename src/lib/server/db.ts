@@ -1,16 +1,14 @@
 import { mkdirSync } from 'fs';
 import { join } from 'path';
 import { homedir } from 'os';
+import Database from 'better-sqlite3';
 
 const DATA_DIR = join(homedir(), '.local', 'share', 'hffmnn-search');
 mkdirSync(DATA_DIR, { recursive: true });
 
-// Lazy-load bun:sqlite at runtime — Vite can't analyze this import
 let db: any = null;
 function getDb() {
   if (!db) {
-    // @ts-ignore — runtime-only import for Bun
-    const { Database } = require('bun:sqlite');
     db = new Database(join(DATA_DIR, 'search.db'));
     db.exec(`
       CREATE TABLE IF NOT EXISTS searches (
