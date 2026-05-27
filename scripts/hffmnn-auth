@@ -1,0 +1,193 @@
+#!/usr/bin/env node
+/**
+ * hffmnn-auth — CLI tool for pairing devices with hffmnn apps
+ * 
+ * Usage:
+ *   hffmnn-auth pair <host> <code>     # Pair a device
+ *   hffmnn-auth status <host>          # Check auth status
+ *   hffmnn-auth logout <host>          # Log out
+ * 
+ * Examples:
+ *   hffmnn-auth pair calendar.hffmnn.com X7K9M2
+ *   hffmnn-auth pair search.hffmnn.com AB3D9F
+ *   hffmnn-auth pair laptop:6969 X7K9M2
+ */
+
+const https = require('https');
+const http = require('http');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
+
+const CONFIG_DIR = path.join(os.homedir(), '.config', 'hffmnn');
+const CONFIG_FILE = path.join(CONFIG_DIR, 'auth.json');
+
+function loadConfig() {
+  try {
+    return JSON.parse(fs.readFileSync(CONFIG_FILE, 'utf8'));
+  } catch {
+    return {};
+  }
+}
+
+function saveConfig(config) {
+  fs.mkdirSync(CONFIG_DIR, { recursive: true });
+  fs.writeFileSync(CONFIG_FILE, JSON.stringify(config, null, 2));
+}
+
+function makeRequest(host, path, method = 'GET', body = null) {
+  return new Promise((resolve, reject) => {
+    const isHttps = !host.includes(':') || host.includes('.com') || host.includes('.net');
+    const client = isHttps ? https : http;
+    const url = isHttps ? `https://${host}${path}` : `http://${host}${path}`;
+    
+    // Parse host and port
+    let hostname = host;
+    let port = isHttps ? 443 : 80;
+    if (host.includes(':')) {
+      const parts = host.split(':');
+      hostname = parts[0];
+      port = parseInt(parts[1], 10);
+    }
+
+    const options = {
+      hostname,
+      port,
+      path,
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        'User-Agent': 'hffmnn-auth-cli/1.0'
+      }
+    };
+
+    if (body) {
+      options.headers['Content-Length'] = Buffer.byteLength(JSON.stringify(body));
+    }
+
+    const req = client.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          resolve({ status: res.statusCode, data: parsed, headers: res.headers });
+        } catch {
+          resolve({ status: res.statusCode, data, headers: res.headers });
+        }
+      });
+    });
+
+    req.on('error', reject);
+
+    if (body) {
+      req.write(JSON.stringify(body));
+    }
+
+    req.end();
+  });
+}
+
+async function pairDevice(host, code) {
+  console.log(`🔑 Pairing with ${host} using code ${code}...`);
+  
+  try {
+    const result = await makeRequest(host, '/api/auth/pair', 'POST', { code: code.toUpperCase() });
+    
+    if (result.status === 200 && result.data.success) {
+      console.log(`✅ Device paired successfully with ${host}!`);
+      console.log('');
+      console.log('Refresh your browser to access the app.');
+      
+      // Save to config
+      const config = loadConfig();
+      config[host] = { paired: true, pairedAt: new Date().toISOString() };
+      saveConfig(config);
+    } else if (result.status === 401) {
+      console.error(`❌ Invalid or expired pairing code`);
+      process.exit(1);
+    } else {
+      console.error(`❌ Pairing failed: ${result.data?.error || result.data || 'Unknown error'}`);
+      process.exit(1);
+    }
+  } catch (err) {
+    console.error(`❌ Could not connect to ${host}: ${err.message}`);
+    console.error('   Make sure the server is running and accessible.');
+    process.exit(1);
+  }
+}
+
+async function checkStatus(host) {
+  try {
+    const result = await makeRequest(host, '/api/auth/status', 'GET');
+    if (result.status === 200 && result.data.paired) {
+      console.log(`✅ ${host} — Authenticated`);
+    } else {
+      console.log(`⚠️  ${host} — Not authenticated`);
+    }
+  } catch (err) {
+    console.log(`❌ ${host} — Cannot connect (${err.message})`);
+  }
+}
+
+async function logoutDevice(host) {
+  try {
+    const result = await makeRequest(host, '/api/auth/logout', 'POST');
+    if (result.status === 200) {
+      console.log(`✅ Logged out from ${host}`);
+      const config = loadConfig();
+      delete config[host];
+      saveConfig(config);
+    } else {
+      console.error(`❌ Logout failed: ${result.data?.error || 'Unknown error'}`);
+    }
+  } catch (err) {
+    console.error(`❌ Could not connect to ${host}: ${err.message}`);
+  }
+}
+
+function showHelp() {
+  console.log('hffmnn-auth — Pair devices with hffmnn apps');
+  console.log('');
+  console.log('Usage:');
+  console.log('  hffmnn-auth pair <host> <code>   Pair a device');
+  console.log('  hffmnn-auth status <host>         Check auth status');
+  console.log('  hffmnn-auth logout <host>         Log out');
+  console.log('');
+  console.log('Examples:');
+  console.log('  hffmnn-auth pair calendar.hffmnn.com X7K9M2');
+  console.log('  hffmnn-auth pair search.hffmnn.com AB3D9F');
+  console.log('  hffmnn-auth pair laptop:6969 X7K9M2');
+}
+
+// Main
+const [,, command, host, code] = process.argv;
+
+if (!command || command === 'help' || command === '--help' || command === '-h') {
+  showHelp();
+  process.exit(0);
+}
+
+if (command === 'pair') {
+  if (!host || !code) {
+    console.error('Usage: hffmnn-auth pair <host> <code>');
+    process.exit(1);
+  }
+  pairDevice(host, code);
+} else if (command === 'status') {
+  if (!host) {
+    console.error('Usage: hffmnn-auth status <host>');
+    process.exit(1);
+  }
+  checkStatus(host);
+} else if (command === 'logout') {
+  if (!host) {
+    console.error('Usage: hffmnn-auth logout <host>');
+    process.exit(1);
+  }
+  logoutDevice(host);
+} else {
+  console.error(`Unknown command: ${command}`);
+  showHelp();
+  process.exit(1);
+}
