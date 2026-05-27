@@ -1,7 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
-const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY || '';
+import { llmConfigured, llmChatCompletion, getDefaultModel } from '$lib/server/llm';
 
 interface SearchIntent {
   intent: 'places' | 'web' | 'definition' | 'knowledge';
@@ -37,31 +36,20 @@ export const GET: RequestHandler = async ({ url }) => {
   const q = url.searchParams.get('q');
   if (!q) throw error(400, 'Missing query parameter');
 
+  if (!llmConfigured()) {
+    return json(heuristicIntent(q));
+  }
+
   try {
     const prompt = INTENT_PROMPT.replace('{QUERY}', q.replace(/"/g, '\\"'));
 
-    const response = await fetch('https://ollama.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OLLAMA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gemma4:31b-cloud',
-        messages: [{ role: 'user', content: prompt }],
-        stream: false,
-        temperature: 0.1,
-        max_tokens: 256,
-      }),
+    const data = await llmChatCompletion({
+      model: getDefaultModel('gemma4:31b-cloud'),
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.1,
+      max_tokens: 256,
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error('Intent API error:', response.status, text);
-      return json(heuristicIntent(q));
-    }
-
-    const data = await response.json();
     const content = data.choices?.[0]?.message?.content || '';
 
     let intent: SearchIntent;
@@ -102,8 +90,8 @@ function heuristicIntent(q: string): SearchIntent {
     }
     return { intent: 'places', confidence: 0.5 };
   }
-  if (q.match(/\b(who|what|when|where|why|how|is|are|did|does|can|will)\b/i)) {
+  if (q.match(/\b(what|who|when|where|how|why|is|are|was|were|did|does|can|could|would|should|will|has|have)\b/i)) {
     return { intent: 'knowledge', confidence: 0.6 };
   }
-  return { intent: 'web', confidence: 0.7 };
+  return { intent: 'web', confidence: 0.5 };
 }

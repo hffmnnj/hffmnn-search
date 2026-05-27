@@ -1,7 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-
-const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY || '';
+import { llmConfigured, llmChatCompletion, getDefaultModel } from '$lib/server/llm';
 
 export const POST: RequestHandler = async ({ request }) => {
   const { message, context, history = [] } = await request.json();
@@ -54,32 +53,17 @@ ${r.description || ''}`
     { role: 'user', content: message },
   ];
 
-  // Ollama Cloud — note: use ollama.com not api.ollama.com
   try {
-    const response = await fetch('https://ollama.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${OLLAMA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'gemma4:31b-cloud',
-        messages,
-        stream: false,
-        temperature: 0.7,
-        max_tokens: 2048,
-      }),
+    const data = await llmChatCompletion({
+      model: getDefaultModel('gemma4:31b-cloud'),
+      messages,
+      temperature: 0.7,
+      max_tokens: 2048,
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Ollama API ${response.status}: ${text}`);
-    }
-
-    const data = await response.json();
     return json({
       response: data.choices?.[0]?.message?.content || '',
-      model: 'gemma4:31b-cloud',
+      model: getDefaultModel('gemma4:31b-cloud'),
     });
   } catch (e: any) {
     console.error('Chat error:', e);

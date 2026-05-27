@@ -1,5 +1,6 @@
 import { json, error } from '@sveltejs/kit';
 import { webSearch } from '$lib/server/brave';
+import { exaConfigured, exaWebSearch, normalizeExaResults } from '$lib/server/exa';
 import { logSearch, getDomainPrefs } from '$lib/server/db';
 import type { RequestHandler } from './$types';
 
@@ -13,16 +14,61 @@ export const GET: RequestHandler = async ({ url }) => {
   const safesearch = url.searchParams.get('safesearch') || 'moderate';
   const country = url.searchParams.get('country') || '';
   const lang = url.searchParams.get('lang') || '';
+  const useExa = url.searchParams.get('exa') === '1' || url.searchParams.get('exa') === 'true';
 
   // Brave API max offset is 9 — cap it
   const braveOffset = Math.min(parseInt(offset), 9);
 
   try {
-    const data = await webSearch({ q, count, offset: String(braveOffset), freshness, safesearch, country, lang });
-    const webResults = data.web?.results || [];
-    const newsResults = data.news?.results || [];
-    const videoResults = data.videos?.results || [];
-    const summaryKey = data.query?.summary_key || '';
+    let data: any;
+    let webResults: any[] = [];
+    let newsResults: any[] = [];
+    let videoResults: any[] = [];
+    let summaryKey = '';
+    let altered = '';
+    let total = 0;
+    let searchBackend = 'brave';
+
+    // Primary: Brave Search
+    if (!useExa) {
+      try {
+        data = await webSearch({ q, count, offset: String(braveOffset), freshness, safesearch, country, lang });
+        webResults = data.web?.results || [];
+        newsResults = data.news?.results || [];
+        videoResults = data.videos?.results || [];
+        summaryKey = data.query?.summary_key || '';
+        altered = data.query?.altered || '';
+        total = data.web?.total?.results || 0;
+      } catch (braveErr: any) {
+        console.error('Brave search failed:', braveErr);
+        // Fallback to Exa if configured
+        if (exaConfigured()) {
+          console.log('Falling back to Exa search...');
+          const exaData = await exaWebSearch({ q, count: parseInt(count) || 10 });
+          webResults = normalizeExaResults(exaData);
+          searchBackend = 'exa';
+          total = webResults.length;
+        } else {
+          throw braveErr;
+        }
+      }
+    }
+
+    // Secondary / forced: Exa
+    if (useExa && exaConfigured()) {
+      const exaData = await exaWebSearch({ q, count: parseInt(count) || 10 });
+      webResults = normalizeExaResults(exaData);
+      searchBackend = 'exa';
+      total = webResults.length;
+    }
+
+    // If still no results, try Exa as last resort
+    if (webResults.length === 0 && exaConfigured()) {
+      const exaData = await exaWebSearch({ q, count: parseInt(count) || 10 });
+      webResults = normalizeExaResults(exaData);
+      searchBackend = 'exa';
+      total = webResults.length;
+    }
 
     // Get domain preferences
     const domainPrefs = getDomainPrefs();
@@ -117,18 +163,19 @@ export const GET: RequestHandler = async ({ url }) => {
 
     return json({
       query: q,
-      altered: data.query?.altered || '',
+      altered,
       web: filtered,
       news: newsResults,
       videos: videoResults.slice(0, 6),
       feed,
       infobox,
       infoboxType,
-      total: data.web?.total?.results || 0,
+      total,
       offset: parseInt(offset),
       count: parseInt(count),
       summaryKey,
-      relatedQueries: data.query?.related || [],
+      relatedQueries: data?.query?.related || [],
+      searchBackend,
     });
   } catch (e: any) {
     console.error('Search error:', e);

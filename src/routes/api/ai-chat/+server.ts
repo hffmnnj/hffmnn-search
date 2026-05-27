@@ -1,7 +1,7 @@
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
+import { llmConfigured, llmChatCompletion, getDefaultModel } from '$lib/server/llm';
 
-const OLLAMA_API_KEY = process.env.OLLAMA_API_KEY || '';
 const BRAVE_API_KEY = process.env.BRAVE_API_KEY || '';
 
 // ─── Tool Definitions ───────────────────────────────────────────────────────
@@ -120,7 +120,7 @@ async function executeNewsSearch(query: string): Promise<string> {
   }
 }
 
-// ─── Ollama Chat with Tool Loop ─────────────────────────────────────────────
+// ─── LLM Chat with Tool Loop ───────────────────────────────────────────────────
 async function chatWithTools(
   messages: any[],
   model: string,
@@ -129,28 +129,14 @@ async function chatWithTools(
   const toolCalls: { name: string; query: string }[] = [];
 
   for (let round = 0; round <= maxToolRounds; round++) {
-    const response = await fetch('https://ollama.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OLLAMA_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model,
-        messages,
-        tools: TOOLS,
-        stream: false,
-        temperature: 0.7,
-        max_tokens: 4096,
-      }),
+    const data = await llmChatCompletion({
+      model,
+      messages,
+      tools: TOOLS,
+      temperature: 0.7,
+      max_tokens: 4096,
     });
 
-    if (!response.ok) {
-      const text = await response.text();
-      throw new Error(`Ollama API ${response.status}: ${text}`);
-    }
-
-    const data = await response.json();
     const msg = data.choices?.[0]?.message;
 
     // No tool calls — we have the final answer
