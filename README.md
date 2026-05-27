@@ -83,11 +83,11 @@ The app uses a unified LLM client that works with **any OpenAI/Anthropic-compati
 
 | Provider | `LLM_BASE_URL` | `LLM_MODEL` example |
 |----------|---------------|---------------------|
-| **OpenAI** | `https://api.openai.com/v1` | `gpt-4o` |
-| **Anthropic** | `https://api.anthropic.com/v1` | `claude-sonnet-4-20250514` |
-| **OpenRouter** | `https://openrouter.ai/api/v1` | `anthropic/claude-sonnet-4` |
+| **OpenAI** | `https://api.openai.com/v1` | `gpt-5.5` |
+| **Anthropic** | `https://api.anthropic.com/v1` | `claude-opus-4.7` |
+| **OpenRouter** | `https://openrouter.ai/api/v1` | `openai/gpt-5.5`, `anthropic/claude-opus-4.7`, `moonshot/kimi-k2.6` |
 | **Ollama Cloud** | unset (uses `OLLAMA_API_KEY`) | `gemma4:31b-cloud` |
-| **Local vLLM** | `http://localhost:8000/v1` | `llama3.1-70b` |
+| **Local vLLM** | `http://localhost:8000/v1` | `llama4-70b`, `kimi-k2.6` |
 
 Set `LLM_BASE_URL` + `LLM_API_KEY` + `LLM_MODEL` for custom endpoints. If `LLM_BASE_URL` is unset, the app falls back to **Ollama Cloud** using `OLLAMA_API_KEY`.
 
