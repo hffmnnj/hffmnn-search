@@ -43,11 +43,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const path = event.url.pathname;
 	const isApi = path.startsWith('/api/');
 
+	let authReason = 'none';
+	let valid = false;
+
 	if (!isPublicPath(path)) {
 		const sessionToken = event.cookies.get(SESSION_COOKIE);
-		let { valid } = validateSession(sessionToken || '');
+		const sessionCheck = validateSession(sessionToken || '');
+		valid = sessionCheck.valid;
+		authReason = valid ? 'cookie' : 'none';
 
-		// Auto-authenticate Tailnet / LAN devices
+		// Auto-authenticate Tailnet devices ONLY (100.64.0.0/10)
 		if (!valid) {
 			const clientIp = getClientIp(event);
 			if (clientIp && isTrustedIp(clientIp)) {
@@ -61,10 +66,13 @@ export const handle: Handle = async ({ event, resolve }) => {
 					maxAge: 60 * 60 * 24 * 90
 				});
 				valid = true;
+				authReason = 'tailnet-auto';
+				console.log(`[AUTH] Tailnet auto-auth: ${clientIp} -> ${path}`);
 			}
 		}
 
 		if (!valid) {
+			console.log(`[AUTH] Blocked: ${path} from ${getClientIp(event) || 'unknown'}`);
 			if (isApi) {
 				return new Response(JSON.stringify({ error: 'Unauthorized' }), {
 					status: 401,
@@ -80,5 +88,6 @@ export const handle: Handle = async ({ event, resolve }) => {
 	}
 
 	const response = await resolve(event);
+	response.headers.set('X-Auth-Status', authReason);
 	return response;
 };

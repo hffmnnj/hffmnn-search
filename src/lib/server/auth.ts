@@ -103,12 +103,8 @@ export function isTrustedIp(ip: string): boolean {
 	if (parts.length !== 4 || parts.some(isNaN)) return false;
 
 	const [a, b] = parts;
-	// Tailscale 100.64.0.0/10
+	// Tailscale 100.64.0.0/10 ONLY
 	if (a === 100 && b >= 64 && b <= 127) return true;
-	// RFC 1918 private ranges (home LAN)
-	if (a === 10) return true;                           // 10.0.0.0/8
-	if (a === 172 && b >= 16 && b <= 31) return true;  // 172.16.0.0/12
-	if (a === 192 && b === 168) return true;           // 192.168.0.0/16
 
 	return false;
 }
